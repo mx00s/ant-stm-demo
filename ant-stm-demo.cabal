@@ -21,16 +21,28 @@ category:           Concurrency
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules:  MyLib
+    exposed-modules:  AntStmDemo,
+                      AntStmDemo.Ant,
+                      AntStmDemo.Coordinate,
+                      AntStmDemo.Config,
+                      AntStmDemo.Grid,
+                      AntStmDemo.Report
 
     -- Modules included in this library but not exported.
     -- other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
-    build-depends:    base ^>=4.14.1.0
+    build-depends:    base ^>=4.14.1.0,
+                      aeson ^>=1.5,
+                      containers ^>= 0.6,
+                      random ^>= 1.0,
+                      random-shuffle ^>= 0.0.4,
+                      stm ^>= 2.5,
+                      text ^>= 1.2
     hs-source-dirs:   src
     default-language: Haskell2010
+    ghc-options:      -Wall
 
 executable ant-stm-demo
     main-is:          Main.hs
@@ -42,10 +54,13 @@ executable ant-stm-demo
     -- other-extensions:
     build-depends:
         base ^>=4.14.1.0,
+        aeson ^>=1.5,
+        stm ^>= 2.5,
         ant-stm-demo
 
     hs-source-dirs:   app
     default-language: Haskell2010
+    ghc-options:      -Wall
 
 test-suite ant-stm-demo-test
     default-language: Haskell2010
@@ -53,3 +68,4 @@ test-suite ant-stm-demo-test
     hs-source-dirs:   test
     main-is:          MyLibTest.hs
     build-depends:    base ^>=4.14.1.0
+    ghc-options:      -Wall
