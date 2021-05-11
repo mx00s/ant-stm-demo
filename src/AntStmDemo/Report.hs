@@ -4,7 +4,7 @@ module AntStmDemo.Report (Report(..), report) where
 
 import           AntStmDemo.Ant        (Ant (..), AntId)
 import           AntStmDemo.Coordinate (Coordinate)
-import           AntStmDemo.Grid       (Grid (..), tryReadCell)
+import           AntStmDemo.Grid       (Cell, Grid (..), tryReadCell)
 import           Control.Monad.STM     (STM)
 import           Data.Aeson            (ToJSON, defaultOptions,
                                         genericToEncoding, toEncoding)
@@ -20,7 +20,7 @@ newtype Report = Report (Map.Map AntId [Coordinate])
 instance ToJSON Report where
   toEncoding = genericToEncoding defaultOptions
 
-report :: Grid -> STM Report
+report :: Grid Cell -> STM Report
 report grid = do
   cells <- fmap (filter isJust) (mapM tryReadCell (Map.elems (gridCell grid)))
   (return . Report . Map.fromList . sortOn fst . fmap antReport) cells

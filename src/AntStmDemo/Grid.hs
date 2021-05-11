@@ -1,19 +1,19 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE DeriveGeneric      #-}
+{-# LANGUAGE DeriveTraversable  #-}
+{-# LANGUAGE FlexibleInstances  #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
-module AntStmDemo.Grid (Cell(..), Grid(..), mkAntCell, initCellMap, initAntGrid, tryReadCell) where
+module AntStmDemo.Grid (Cell(..), Grid(..), mkAntCell, initCellMap, initAntGrid, putCell, takeCell, tryReadCell) where
 
 import           AntStmDemo.Ant               (Ant, AntId (..), mkAnt)
 import           AntStmDemo.Config            (Config (..))
 import           AntStmDemo.Coordinate        (Coordinate (..), pickGridCoords)
 import           Control.Concurrent.STM.TMVar (TMVar, newEmptyTMVar, newTMVar,
+                                               putTMVar, takeTMVar,
                                                tryReadTMVar)
 import           Control.Monad.STM            (STM)
-import           Data.Aeson                   (ToJSON, ToJSONKey,
-                                               ToJSONKeyFunction (..),
-                                               defaultOptions, encode,
-                                               fromEncoding, genericToEncoding,
-                                               toEncoding, toJSONKey)
+import           Data.Aeson                   (ToJSON, defaultOptions,
+                                               genericToEncoding, toEncoding)
 import qualified Data.Map                     as Map
 import           Data.Maybe                   (fromMaybe)
 import           GHC.Generics                 (Generic)
@@ -22,32 +22,36 @@ import           System.Random                (mkStdGen)
 newtype Cell = Cell { unCell :: TMVar Ant }
   deriving Generic
 
--- instance ToJSON Cell where
---   toEncoding = genericToEncoding defaultOptions
+mkAntCell :: Ant -> STM Cell
+mkAntCell ant = fmap Cell (newTMVar ant)
+
+data Grid a
+  = Grid
+  { gridWidth  :: Int
+  , gridHeight :: Int
+  , gridCell   :: Map.Map Coordinate a
+  }
+  deriving (Generic, Functor, Foldable)
+
+deriving instance Traversable Grid
+
+instance ToJSON (Grid (Maybe Ant)) where
+  toEncoding = genericToEncoding defaultOptions
+
+takeCell :: Cell -> STM Ant
+takeCell = takeTMVar . unCell
+
+putCell :: Cell -> Ant -> STM ()
+putCell cell = putTMVar (unCell cell)
 
 tryReadCell :: Cell -> STM (Maybe Ant)
 tryReadCell = tryReadTMVar . unCell
 
-mkAntCell :: Ant -> STM Cell
-mkAntCell ant = fmap Cell (newTMVar ant)
+toCell :: Maybe Ant -> STM Cell
+toCell = maybe (fmap Cell newEmptyTMVar) mkAntCell
 
--- TODO: Parameterize Grid's cell type and derive Functor so Cells can
--- easily be converted between `Cell` and `Maybe Ant`
--- representations. Helps with rendering Grids as JSON because there's
--- no sensible way to implement ToJSON on Cell.
-data Grid
-  = Grid
-  { gridWidth  :: Int
-  , gridHeight :: Int
-  , gridCell   :: Map.Map Coordinate Cell
-  }
-  deriving Generic
-
--- instance ToJSON Grid where
---   toEncoding = genericToEncoding defaultOptions
-
-initCellMap :: Config -> STM [(Coordinate, Cell)]
-initCellMap config = sequence cellMap
+initCellMap :: Config -> STM (Map.Map Coordinate Cell)
+initCellMap config = mapM toCell cellMap
   where
     w = cfgWidth config
     h = cfgHeight config
@@ -57,11 +61,12 @@ initCellMap config = sequence cellMap
       in zip froms tos
     defaultSeed = 0
     fromsAndTos = (fromToCoords . mkStdGen . fromMaybe defaultSeed . cfgRngSeed) config
-    blankCells = [newEmptyTMVar >>= \var -> return (Coord x y, Cell var) | x <- [0..(w - 1)], y <- [0..(h - 1)]]
-    cellMap = blankCells ++ [fmap (from,) (mkAntCell (mkAnt ident from to)) | (ident, (from, to)) <- zip (fmap AntId [0..]) fromsAndTos]
+    blankCells = [(Coord x' y', Nothing) | x' <- [0..w-1], y' <- [0..h-1]]
+    antCells = [(from, Just (mkAnt ident from to)) | (ident, (from, to)) <- zip (fmap AntId [0..]) fromsAndTos]
+    cellMap = Map.fromList (blankCells ++ antCells)
 
-initAntGrid :: Config -> STM Grid
-initAntGrid config = fmap (Grid w h . Map.fromList) (initCellMap config)
+initAntGrid :: Config -> STM (Grid Cell)
+initAntGrid config = fmap (Grid w h) (initCellMap config)
   where
     w = cfgWidth config
     h = cfgHeight config

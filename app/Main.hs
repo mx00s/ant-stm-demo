@@ -1,14 +1,13 @@
 module Main where
 
-import           AntStmDemo         (activeCells, initAntGrid, report, showCell,
-                                     showGrid, simulate)
-import           AntStmDemo.Config  (fromArgs)
-import           Control.Monad.STM  (atomically)
-import           Data.Aeson         (encode)
-import           System.Environment (getArgs)
-import           System.IO          (hPutStrLn, stderr)
-
--- TODO: CLI: emit initial grid and report as JSON
+import           AntStmDemo           (initAntGrid, report, simulate,
+                                       tryReadCell)
+import           AntStmDemo.Config    (fromArgs)
+import           Control.Monad.STM    (atomically)
+import           Data.Aeson           (ToJSON, encode)
+import qualified Data.ByteString.Lazy as BS
+import           System.Environment   (getArgs)
+import           System.IO            (hPutStrLn, stderr)
 
 main :: IO ()
 main = do
@@ -17,19 +16,18 @@ main = do
     Nothing -> hPutStrLn stderr "ERROR: failed to initialize grid from provided arguments"
     Just grid -> do
       putStr "\nInitial Grid\n\t"
-      atomically (grid >>= showGrid) >>= (print . encode)
-      -- print (encode grid)
-
-      putStr "Active Cells\n\t"
-      atomically (grid >>= activeCells >>= mapM showCell) >>= print
+      atomically (grid >>= mapM tryReadCell) >>= printJSON
+      putStrLn ""
 
       postSimGrid <- atomically (grid >>= simulate)
 
-      putStr "\nGrid After Simulation\n\t"
-      atomically (showGrid postSimGrid) >>= putStrLn
-
-      putStr "Active Cells After Simulation\n\t"
-      atomically (activeCells postSimGrid >>= mapM showCell) >>= print
+      putStr "Grid After Simulation\n\t"
+      atomically (mapM tryReadCell postSimGrid) >>= printJSON
+      putStrLn ""
 
       putStr "Simulation Report\n\t"
-      atomically (report postSimGrid) >>= (print . encode)
+      atomically (report postSimGrid) >>= printJSON
+      putStrLn ""
+  where
+    printJSON :: ToJSON a => a -> IO ()
+    printJSON = BS.putStr . encode

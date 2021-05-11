@@ -3,11 +3,8 @@
 module AntStmDemo.Ant (AntId(..), Ant(..), mkAnt, reachedDestination) where
 
 import           AntStmDemo.Coordinate (Coordinate)
-import           Data.Aeson            (ToJSON, ToJSONKey,
-                                        ToJSONKeyFunction (..), defaultOptions,
-                                        encode, fromEncoding, genericToEncoding,
-                                        toEncoding, toJSONKey)
-import           Data.Text             (pack)
+import           Data.Aeson            (ToJSON, ToJSONKey, defaultOptions,
+                                        genericToEncoding, toEncoding)
 import           GHC.Generics          (Generic)
 
 newtype AntId = AntId Int
@@ -27,7 +24,10 @@ data Ant
   , antTravelLog   :: [Coordinate]
   , antDestination :: Coordinate
   }
-  deriving Show
+  deriving (Generic, Show)
+
+instance ToJSON Ant where
+  toEncoding = genericToEncoding defaultOptions
 
 mkAnt :: AntId -> Coordinate -> Coordinate -> Ant
 mkAnt ident from = Ant ident [from]
