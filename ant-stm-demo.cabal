@@ -36,6 +36,7 @@ library
     build-depends:    base ^>=4.14.1.0,
                       aeson ^>= 1.5,
                       containers ^>= 0.6,
+                      MonadRandom ^>= 0.5,
                       random ^>= 1.0,
                       random-shuffle ^>= 0.0.4,
                       stm ^>= 2.5,

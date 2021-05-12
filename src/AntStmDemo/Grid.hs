@@ -15,7 +15,6 @@ import           Control.Monad.STM            (STM)
 import           Data.Aeson                   (ToJSON, defaultOptions,
                                                genericToEncoding, toEncoding)
 import qualified Data.Map                     as Map
-import           Data.Maybe                   (fromMaybe)
 import           GHC.Generics                 (Generic)
 import           System.Random                (mkStdGen)
 
@@ -59,8 +58,7 @@ initCellMap config = mapM toCell cellMap
       (froms, gen2) = pickGridCoords config gen
       (tos, _) = pickGridCoords config gen2
       in zip froms tos
-    defaultSeed = 0
-    fromsAndTos = (fromToCoords . mkStdGen . fromMaybe defaultSeed . cfgRngSeed) config
+    fromsAndTos = (fromToCoords . mkStdGen . cfgRngSeed) config
     blankCells = [(Coord x' y', Nothing) | x' <- [0..w-1], y' <- [0..h-1]]
     antCells = [(from, Just (mkAnt ident from to)) | (ident, (from, to)) <- zip (fmap AntId [0..]) fromsAndTos]
     cellMap = Map.fromList (blankCells ++ antCells)
